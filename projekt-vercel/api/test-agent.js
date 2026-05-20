@@ -1,6 +1,13 @@
-exports.handler = async (event) => {
+export default async function handler(req, res) {
   try {
-    const { systemPrompt, messages } = JSON.parse(event.body);
+
+    if (req.method !== 'POST') {
+      return res.status(405).json({
+        error: 'Method not allowed'
+      });
+    }
+
+    const { systemPrompt, messages } = req.body;
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -20,29 +27,24 @@ exports.handler = async (event) => {
     const data = await response.json();
 
     if (!response.ok) {
-      return {
-        statusCode: response.status,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          error: data.error?.message || JSON.stringify(data)
-        })
-      };
+      return res.status(response.status).json({
+        error: data.error?.message || JSON.stringify(data)
+      });
     }
 
-    return {
-      statusCode: 200,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        reply: data.content?.[0]?.text || 'No response'
-      })
-    };
+    return res.status(200).json({
+      reply:
+        data?.content?.[0]?.text ||
+        data?.completion ||
+        data?.output_text ||
+        'No response'
+    });
 
   } catch (error) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        error: error.message
-      })
-    };
+
+    return res.status(500).json({
+      error: error.message
+    });
+
   }
-};
+}
