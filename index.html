@@ -1405,7 +1405,7 @@ When appropriate, end with a soft CTA: "${d.cta}"
 
       const systemPrompt = buildPrompt(getData());
 
-      fetch('/.netlify/functions/test-agent', {
+      fetch('/api/test-agent', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
