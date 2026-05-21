@@ -1135,6 +1135,34 @@ header {
   margin-top: 12px;
 }
 
+.optimizer-actions {
+  display: none;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+.optimizer-actions.active {
+  display: flex;
+}
+
+.optimizer-apply {
+  border: 1px solid rgba(34,221,102,.28);
+  background: rgba(34,221,102,.10);
+  color: var(--accent);
+  border-radius: 999px;
+  padding: 10px 13px;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.optimizer-apply:disabled {
+  cursor: default;
+  opacity: .65;
+}
+
 .optimizer-score {
   border: 1px solid rgba(255,255,255,.08);
   border-radius: 14px;
@@ -1488,6 +1516,9 @@ header {
             </div>
             <div class="optimizer-scores" id="optimizerScores"></div>
             <div class="optimizer-list" id="optimizerList"></div>
+            <div class="optimizer-actions" id="optimizerActions">
+              <button class="optimizer-apply" id="applyOptimizerBtn" onclick="applyOptimizerImprovements()" data-i18n="applyOptimization">Apply improvements</button>
+            </div>
           </div>
 
           <div class="locked-system">
@@ -1515,6 +1546,7 @@ header {
     let currentLang = 'en';
     let activeTemplate = '';
     let sandboxMessages = [];
+    let lastOptimizerResult = null;
     const sandboxLimit = 10;
 
     const translations = {
@@ -1530,7 +1562,7 @@ header {
         safetyTitle: 'Safety', safetyHint: 'Protect the business from hallucinations, prompt injection and privacy issues.', safetyRulesLabel: 'Active safeguards', cautionLabel: 'Caution mode', humanContactLabel: 'Human contact',
         skillsTitle: 'Skills and instructions', skillsHint: 'Turn the prompt into an actual AI employee system with clear workflows.', skillsLabel: 'Enabled skills', workflowLabel: 'Workflow instructions', memoryLabel: 'Memory rules',
         formatTitle: 'Output format', formatHint: 'Decide how the AI employee should structure its answers.', formatLabel: 'Preferred format', emojiLabel: 'Emoji', greetingLabel: 'Greeting', ctaLabel: 'Default CTA',
-        backBtn: 'Back', nextBtn: 'Next', doneBtn: 'Done', previewTitle: 'System preview', showJson: 'Show JSON', showPrompt: 'Show prompt',  lockedTitle: 'Full system prompt is protected', lockedText: 'This preview shows the structure, logic and selected configuration. The full prompt is available through copy or export actions.', testTitle: 'Live AI test is not connected yet', testText: 'This area will later use Anthropic API to test the generated system with a real user message. For now, the preview only shows structure and configuration.', scoreSafety: 'safety coverage', scoreClarity: 'prompt clarity', scoreSales: 'sales readiness', scorePro: 'professionalism', recommendationsTitle: 'AI recommendations', optimizeSystem: 'Optimize System', optimizerTitle: 'AI optimization', optimizerIntro: 'Run an AI analysis to find missing logic, safety gaps and stronger sales flow.', chatTitle: 'Example conversation', tip: 'Tip: the best AI employee systems include business context, FAQ, safety rules and examples of good answers.',
+        backBtn: 'Back', nextBtn: 'Next', doneBtn: 'Done', previewTitle: 'System preview', showJson: 'Show JSON', showPrompt: 'Show prompt',  lockedTitle: 'Full system prompt is protected', lockedText: 'This preview shows the structure, logic and selected configuration. The full prompt is available through copy or export actions.', testTitle: 'Live AI test is not connected yet', testText: 'This area will later use Anthropic API to test the generated system with a real user message. For now, the preview only shows structure and configuration.', scoreSafety: 'safety coverage', scoreClarity: 'prompt clarity', scoreSales: 'sales readiness', scorePro: 'professionalism', recommendationsTitle: 'AI recommendations', optimizeSystem: 'Optimize System', applyOptimization: 'Apply improvements', appliedOptimization: 'Applied', optimizerTitle: 'AI optimization', optimizerIntro: 'Run an AI analysis to find missing logic, safety gaps and stronger sales flow.', chatTitle: 'Example conversation', tip: 'Tip: the best AI employee systems include business context, FAQ, safety rules and examples of good answers.',
         copied: 'Prompt copied to clipboard.',
         liveTestTitle: 'Live AI sandbox', sandboxPlaceholder: 'Test your AI employee live with real Claude responses.', sendTest: 'Send test', sandboxLimit: 'Limit: 10 messages per test session', resetChat: 'Reset', demoQuestion: 'Customer: Which camera is good for my cat while I am at work?'
       },
@@ -1546,7 +1578,7 @@ header {
         safetyTitle: 'Bezpieczeństwo', safetyHint: 'Chroń firmę przed halucynacjami, prompt injection i problemami z prywatnością.', safetyRulesLabel: 'Aktywne zabezpieczenia', cautionLabel: 'Tryb ostrożności', humanContactLabel: 'Kontakt do człowieka',
         skillsTitle: 'Skills i instrukcje', skillsHint: 'Zmień prompt w realny system AI pracownika z jasnymi workflow.', skillsLabel: 'Aktywne umiejętności', workflowLabel: 'Instrukcje workflow', memoryLabel: 'Zasady pamięci',
         formatTitle: 'Format odpowiedzi', formatHint: 'Ustaw, jak AI pracownik ma układać odpowiedzi.', formatLabel: 'Preferowany format', emojiLabel: 'Emoji', greetingLabel: 'Powitanie', ctaLabel: 'Domyślne CTA',
-        backBtn: 'Wstecz', nextBtn: 'Dalej', doneBtn: 'Gotowe', previewTitle: 'Podgląd systemu', showJson: 'Pokaż JSON', showPrompt: 'Pokaż prompt',  lockedTitle: 'Pełny system prompt jest chroniony', lockedText: 'Ten podgląd pokazuje strukturę, logikę i konfigurację. Pełny prompt jest dostępny przez kopiowanie albo eksport.', testTitle: 'Test AI nie jest jeszcze podłączony', testText: 'To miejsce później wykorzysta Anthropic API do testowania wygenerowanego systemu na realnej wiadomości użytkownika. Na razie podgląd pokazuje tylko strukturę i konfigurację.', scoreSafety: 'pokrycie safety', scoreClarity: 'klarowność promptu', scoreSales: 'gotowość sprzedażowa', scorePro: 'profesjonalizm', recommendationsTitle: 'Rekomendacje AI', optimizeSystem: 'Optymalizuj system', optimizerTitle: 'Optymalizacja AI', optimizerIntro: 'Uruchom analizę AI, żeby znaleźć braki w logice, safety i flow sprzedażowym.', chatTitle: 'Przykładowa rozmowa', tip: 'Tip: najlepsze systemy AI pracownika mają kontekst firmy, FAQ, zasady bezpieczeństwa i przykłady dobrych odpowiedzi.',
+        backBtn: 'Wstecz', nextBtn: 'Dalej', doneBtn: 'Gotowe', previewTitle: 'Podgląd systemu', showJson: 'Pokaż JSON', showPrompt: 'Pokaż prompt',  lockedTitle: 'Pełny system prompt jest chroniony', lockedText: 'Ten podgląd pokazuje strukturę, logikę i konfigurację. Pełny prompt jest dostępny przez kopiowanie albo eksport.', testTitle: 'Test AI nie jest jeszcze podłączony', testText: 'To miejsce później wykorzysta Anthropic API do testowania wygenerowanego systemu na realnej wiadomości użytkownika. Na razie podgląd pokazuje tylko strukturę i konfigurację.', scoreSafety: 'pokrycie safety', scoreClarity: 'klarowność promptu', scoreSales: 'gotowość sprzedażowa', scorePro: 'profesjonalizm', recommendationsTitle: 'Rekomendacje AI', optimizeSystem: 'Optymalizuj system', applyOptimization: 'Zastosuj usprawnienia', appliedOptimization: 'Zastosowano', optimizerTitle: 'Optymalizacja AI', optimizerIntro: 'Uruchom analizę AI, żeby znaleźć braki w logice, safety i flow sprzedażowym.', chatTitle: 'Przykładowa rozmowa', tip: 'Tip: najlepsze systemy AI pracownika mają kontekst firmy, FAQ, zasady bezpieczeństwa i przykłady dobrych odpowiedzi.',
         copied: 'Prompt skopiowany do schowka.',
         liveTestTitle: 'Sandbox testów AI', sandboxPlaceholder: 'Przetestuj swojego AI pracownika na żywo z prawdziwymi odpowiedziami Claude.', sendTest: 'Wyślij test', sandboxLimit: 'Limit: 10 wiadomości na sesję testową', resetChat: 'Reset', demoQuestion: 'Klient: Jaka kamera będzie dobra dla kota, kiedy jestem w pracy?'
       }
@@ -2400,8 +2432,15 @@ When appropriate, end with a soft CTA: "${d.cta}"
       const panel = qs('optimizerPanel');
       const badge = qs('optimizerBadge');
       const status = qs('optimizerStatus');
+      const actions = qs('optimizerActions');
+      const applyBtn = qs('applyOptimizerBtn');
 
       if (panel) panel.classList.add('active');
+      if (actions && isLoading) actions.classList.remove('active');
+      if (applyBtn && isLoading) {
+        applyBtn.disabled = false;
+        applyBtn.textContent = translations[currentLang].applyOptimization;
+      }
 
       if (btn) {
         btn.disabled = isLoading;
@@ -2534,13 +2573,21 @@ When appropriate, end with a soft CTA: "${d.cta}"
 
     function renderOptimizerResult(result) {
       const normalized = parseOptimizerPayload(result);
+      lastOptimizerResult = normalized;
       const panel = qs('optimizerPanel');
       const badge = qs('optimizerBadge');
       const status = qs('optimizerStatus');
       const list = qs('optimizerList');
       const scores = qs('optimizerScores');
+      const actions = qs('optimizerActions');
+      const applyBtn = qs('applyOptimizerBtn');
 
       if (panel) panel.classList.add('active');
+      if (actions) actions.classList.add('active');
+      if (applyBtn) {
+        applyBtn.disabled = false;
+        applyBtn.textContent = translations[currentLang].applyOptimization;
+      }
       if (badge) badge.textContent = 'COMPLETE';
 
       const fallbackSummary = currentLang === 'pl'
@@ -2590,6 +2637,87 @@ When appropriate, end with a soft CTA: "${d.cta}"
       }
     }
 
+    function optimizerTextMatches(text, words) {
+      const lower = String(text || '').toLowerCase();
+      return words.some(word => lower.includes(word.toLowerCase()));
+    }
+
+    function appendOptimizerBlock(id, title, items) {
+      const field = qs(id);
+      if (!field || !items.length) return false;
+
+      const existing = field.value.trim();
+      const unique = items.filter(item => item && !existing.toLowerCase().includes(String(item).toLowerCase().slice(0, 80)));
+      if (!unique.length) return false;
+
+      const block = `${title}\n${unique.map(item => `- ${item}`).join('\n')}`;
+      field.value = existing ? `${existing}\n\n${block}` : block;
+      return true;
+    }
+
+    function activateChipByText(group, words) {
+      document.querySelectorAll(`.chips[data-field="${group}"] .chip`).forEach(chip => {
+        const text = `${chip.textContent} ${chip.getAttribute('data-en') || ''} ${chip.getAttribute('data-pl') || ''}`;
+        if (optimizerTextMatches(text, words)) chip.classList.add('active');
+      });
+    }
+
+    function applyOptimizerImprovements() {
+      if (!lastOptimizerResult) return;
+
+      const recommendations = normalizeOptimizerItems(lastOptimizerResult.recommendations || lastOptimizerResult.recommendation);
+      const missingLogic = normalizeOptimizerItems(lastOptimizerResult.missingLogic || lastOptimizerResult.missing_logic || lastOptimizerResult.gaps || lastOptimizerResult.safetyGaps);
+      const promptAdditions = normalizeOptimizerItems(lastOptimizerResult.promptAdditions || lastOptimizerResult.prompt_additions || lastOptimizerResult.improvements || lastOptimizerResult.nextSteps);
+      const allItems = [...recommendations, ...missingLogic, ...promptAdditions];
+
+      const safetyItems = allItems.filter(item => optimizerTextMatches(item, ['prompt injection', 'system prompt', 'privacy', 'customer data', 'dane', 'bezpiec', 'refund', 'zwrot', 'legal', 'praw', 'medical', 'medycz']));
+      const scopeItems = allItems.filter(item => optimizerTextMatches(item, ['product', 'produk', 'offer', 'ofert', 'store', 'sklep', 'service', 'usług', 'inventory', 'asortyment']));
+      const memoryItems = allItems.filter(item => optimizerTextMatches(item, ['memory', 'remember', 'pamię', 'store sensitive', 'sensitive personal']));
+      const workflowItems = allItems.filter(item => !memoryItems.includes(item));
+
+      const title = currentLang === 'pl' ? 'Usprawnienia z optymalizacji AI:' : 'AI optimization improvements:';
+      const safetyTitle = currentLang === 'pl' ? 'Dodatkowe ograniczenia z optymalizacji AI:' : 'Additional AI optimization limits:';
+      const scopeTitle = currentLang === 'pl' ? 'Dodatkowy zakres z optymalizacji AI:' : 'Additional AI optimization scope:';
+      const memoryTitle = currentLang === 'pl' ? 'Dodatkowe zasady pamięci z optymalizacji AI:' : 'Additional AI optimization memory rules:';
+
+      let changed = false;
+      changed = appendOptimizerBlock('workflow', title, workflowItems) || changed;
+      changed = appendOptimizerBlock('cannotDo', safetyTitle, safetyItems) || changed;
+      changed = appendOptimizerBlock('canDo', scopeTitle, scopeItems) || changed;
+      changed = appendOptimizerBlock('memoryRules', memoryTitle, memoryItems) || changed;
+
+      if (optimizerTextMatches(allItems.join(' '), ['upsell', 'cross-sell', 'dosprzeda', 'sprzedaż dodatk'])) {
+        activateChipByText('skills', ['Upselling']);
+      }
+      if (optimizerTextMatches(allItems.join(' '), ['lead', 'qualification', 'kwalifik', 'budget', 'budżet'])) {
+        activateChipByText('skills', ['Lead qualification', 'Kwalifikacja']);
+        activateChipByText('behavior', ['Ask sales questions', 'Zadawaj']);
+      }
+      if (optimizerTextMatches(allItems.join(' '), ['complaint', 'reklamac', 'refund', 'zwrot'])) {
+        activateChipByText('skills', ['Complaint handling', 'reklamac']);
+      }
+      if (optimizerTextMatches(allItems.join(' '), ['escalat', 'human', 'człowieka', 'support@', 'przekaż'])) {
+        activateChipByText('safety', ['Escalate difficult cases', 'Przekieruj trudne']);
+      }
+      if (optimizerTextMatches(allItems.join(' '), ['next step', 'kolejny krok', 'cta'])) {
+        activateChipByText('behavior', ['Suggest the next step', 'Proponuj']);
+      }
+
+      updateAll();
+
+      const applyBtn = qs('applyOptimizerBtn');
+      const status = qs('optimizerStatus');
+      if (applyBtn) {
+        applyBtn.disabled = true;
+        applyBtn.textContent = translations[currentLang].appliedOptimization;
+      }
+      if (status && changed) {
+        status.textContent = currentLang === 'pl'
+          ? 'Usprawnienia zostały dodane do konfiguracji systemu.'
+          : 'Improvements have been added to the system configuration.';
+      }
+    }
+
     async function optimizeSystem() {
       const d = getData();
       setOptimizerLoading(true);
@@ -2619,8 +2747,10 @@ When appropriate, end with a soft CTA: "${d.cta}"
         const panel = qs('optimizerPanel');
         const badge = qs('optimizerBadge');
         const status = qs('optimizerStatus');
+        const actions = qs('optimizerActions');
 
         if (panel) panel.classList.add('active');
+        if (actions) actions.classList.remove('active');
         if (badge) badge.textContent = 'ERROR';
         if (status) {
           status.textContent = currentLang === 'pl'
