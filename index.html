@@ -2445,6 +2445,20 @@ When appropriate, end with a soft CTA: "${d.cta}"
           if (Object.keys(parsedSummary).length) return { ...payload, ...parsedSummary };
         }
 
+        const listFields = ['recommendations', 'recommendation', 'improvements', 'nextSteps', 'missingLogic', 'missing_logic', 'gaps', 'safetyGaps', 'promptAdditions', 'prompt_additions'];
+        for (const field of listFields) {
+          const value = payload[field];
+          const items = Array.isArray(value) ? value : (typeof value === 'string' ? [value] : []);
+          for (const item of items) {
+            if (typeof item !== 'string' || !/\{[\s\S]*\}/.test(item)) continue;
+            const parsedItem = parseOptimizerPayload(item);
+            const parsedKeys = Object.keys(parsedItem);
+            if (parsedKeys.some(key => ['summary', 'recommendations', 'scoreImprovements', 'score_improvements', 'improvements', 'missingLogic', 'promptAdditions'].includes(key))) {
+              return { ...payload, ...parsedItem };
+            }
+          }
+        }
+
         return payload;
       }
 
