@@ -1145,7 +1145,9 @@ header {
 .optimizer-score strong {
   display: block;
   color: var(--accent);
-  font-size: 18px;
+  font-size: 13px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
 }
 
 .optimizer-score span {
@@ -2497,13 +2499,23 @@ When appropriate, end with a soft CTA: "${d.cta}"
         .filter(Boolean);
     }
 
-    function getOptimizerScore(scoreData, keys) {
+    function getOptimizerImpact(scoreData, keys) {
       for (const key of keys) {
         const value = scoreData?.[key];
         if (value === undefined || value === null || value === '') continue;
-        if (typeof value === 'number') return `${Math.round(value)}%`;
-        const text = String(value).trim();
-        return /%$/.test(text) ? text : `${text}%`;
+
+        const numeric = typeof value === 'number'
+          ? value
+          : Number(String(value).replace(/[^0-9.-]/g, ''));
+
+        if (Number.isFinite(numeric)) {
+          if (numeric >= 35) return currentLang === 'pl' ? 'KRYTYCZNY' : 'CRITICAL';
+          if (numeric >= 20) return currentLang === 'pl' ? 'WYSOKI' : 'HIGH';
+          if (numeric >= 10) return currentLang === 'pl' ? 'ŚREDNI' : 'MEDIUM';
+          return currentLang === 'pl' ? 'NISKI' : 'LOW';
+        }
+
+        return String(value).trim().toUpperCase();
       }
       return null;
     }
@@ -2564,11 +2576,12 @@ When appropriate, end with a soft CTA: "${d.cta}"
         ];
 
         scores.innerHTML = rows.map(([keys, label]) => {
-          const value = getOptimizerScore(scoreData, keys);
-          return value ? `
+          const impact = getOptimizerImpact(scoreData, keys);
+          const impactLabel = currentLang === 'pl' ? `${label} impact` : `${label} impact`;
+          return impact ? `
             <div class="optimizer-score">
-              <strong>${escapeHtml(value)}</strong>
-              <span>${escapeHtml(label)}</span>
+              <strong>${escapeHtml(impact)}</strong>
+              <span>${escapeHtml(impactLabel)}</span>
             </div>
           ` : '';
         }).join('');
